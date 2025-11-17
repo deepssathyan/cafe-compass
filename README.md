@@ -1,11 +1,13 @@
 # cafe-compass
 
 # ☕ Cafe Compass • Streamlit App
-[![GitHub stars](https://img.shields.io/github/stars/your-username/cafe-compass?style=social)](https://github.com/your-username/cafe-compass)
+![GitHub stars](https://img.shields.io/github/stars/deepssathyan/cafe-compass?style=social)
+
 
 > Find the perfect café anywhere in the world — complete with filters, maps, images, and real-time data from Yelp.
-
-![Cafe Compass Banner](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdDVzeWx4eTN0anljdW94MW5meDJmZWZnOHhzeDBuM2Fxd2JwNWltdCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Y4z9olnoVl5QI/giphy.gif)
+<p align="center">
+  <img src="https://i.pinimg.com/originals/0f/8e/10/0f8e10b4dc9707d222113df0aec0bf2f.gif" width="500"/>
+</p>
 
 ---
 
@@ -24,11 +26,34 @@
 
 ---
 
+## ⚙️ Tech Stack
+
+| Layer        | Tool                     |
+|--------------|--------------------------|
+| UI           | Streamlit                |
+| Maps         | Folium + streamlit-folium|
+| Backend      | Python                   |
+| External API | Yelp Fusion API          |
+| Utils        | requests, dotenv         |
+
+---
+
 ## 🚀 Live Demo
 > 🧪 If you're running locally:
+
+---
+## 🛣️ Roadmap: Cafe Compass 2.0
+
+- [ ] 🧠 Mood-based café recommendations  
+- [ ] 💬 AI-powered review summaries  
+- [ ] 🎨 Theme switcher (dark / pastel)  
+- [ ] 🏷️ Tags (vegan, quiet, study-friendly)  
+- [ ] 💾 Save favorites to CSV  
+- [ ] 📍 Distance from user location  
+- [ ] 🔐 Optional login / personalization  
 
 ```bash
 git clone https://github.com/your-username/cafe-compass.git
 cd cafe-compass
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run app.py    
