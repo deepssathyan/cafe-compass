@@ -1,96 +1,129 @@
+import os
+import requests
 import streamlit as st
-from yelp_api import search_cafes
+from dotenv import load_dotenv
 from streamlit_folium import st_folium
 import folium
 
-st.set_page_config(page_title="Cafe Compass", page_icon="☕")
+# Load environment variables
+load_dotenv()
 
-# 🔁 Persist results across reruns
-if "results" not in st.session_state:
-    st.session_state.results = []
+# Streamlit page settings
+st.set_page_config(page_title="Cafe Compass", page_icon="☕", layout="wide")
 
-st.title("☕ Cafe Compass")
-st.subheader("Find your perfect coffee spot anywhere in the world 🌍")
+st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&display=swap" rel="stylesheet">
+    <h1 style='text-align: center;
+               color: #BAB86C;
+               font-family: "Gloria Hallelujah", cursive;
+               font-size: 4em;
+               margin-top: -20px;'>
+        Cafe Compass
+    </h1>
+""", unsafe_allow_html=True)
 
-# --- Input Form ---
-with st.form("location_form"):
-    location = st.text_input("📍 Enter a location (e.g. Kansas City, Tokyo, Paris):", "")
-    limit = st.slider("☕ Number of cafés to search:", 5, 30, 10)
-    open_now = st.checkbox("🕒 Only show cafés open now?")
-    min_rating = st.slider("⭐ Minimum rating:", 1.0, 5.0, 3.5, 0.5)
-    submit = st.form_submit_button("🔍 Search Cafés")
 
-# --- Search logic on submit ---
-if submit and location:
-    with st.spinner("Finding cozy cafés..."):
-        st.session_state.results = search_cafes(
-            location,
-            limit=limit,
-            open_now=open_now
+# Hero-style GIF — same dimensions & layout as Cafe Corazón
+st.markdown(
+    """
+    <div style="display: flex; justify-content: center; padding: 0;">
+        <img src="https://i.pinimg.com/originals/0f/8e/10/0f8e10b4dc9707d222113df0aec0bf2f.gif" 
+             style="width: 100%; max-width: 1280px; height: 500px; object-fit: cover; border-radius: 16px; margin-top: -10px;">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+# Yelp API key
+yelp_api_key = os.getenv("YELP_API_KEY")
+
+# Function to call Yelp API
+def search_cafes(location, limit=10, min_rating=0, open_now=False):
+    url = "https://api.yelp.com/v3/businesses/search"
+    headers = {"Authorization": f"Bearer {yelp_api_key}"}
+    params = {
+        "term": "cafes",
+        "location": location,
+        "limit": limit,
+        "sort_by": "best_match",
+    }
+    if open_now:
+        params["open_now"] = True
+
+    response = requests.get(url, headers=headers, params=params)
+    data = response.json()
+    businesses = data.get("businesses", [])
+    return [b for b in businesses if b["rating"] >= min_rating]
+
+# Sidebar filters
+with st.sidebar:
+    st.header("🔍 Search Filters")
+    location = st.text_input("Enter a city or location", value="Seattle")
+    num_results = st.selectbox("Number of cafés to show", options=[5, 10, 15, 20, 25], index=1)
+    min_rating = st.slider("Minimum Rating", 1.0, 5.0, 4.0, 0.5)
+    open_now = st.checkbox("Only show cafes that are open now")
+    search = st.button("Search Cafes")
+
+# Perform search
+if search and location:
+    st.session_state.results = search_cafes(
+        location=location,
+        limit=num_results,
+        min_rating=min_rating,
+        open_now=open_now
+    )
+
+results = st.session_state.get("results", [])
+
+# Map View
+if results:
+    first = results[0]
+    lat = first["coordinates"]["latitude"]
+    lon = first["coordinates"]["longitude"]
+    cafe_map = folium.Map(location=[lat, lon], zoom_start=13)
+
+    for cafe in results:
+        name = cafe["name"]
+        rating = cafe["rating"]
+        address = ", ".join(cafe["location"]["display_address"])
+        phone = cafe.get("display_phone", "N/A")
+        lat = cafe["coordinates"]["latitude"]
+        lon = cafe["coordinates"]["longitude"]
+
+        popup = f"""
+        <b>{name}</b><br>
+        ⭐ Rating: {rating}<br>
+        📍 {address}<br>
+        📞 {phone}
+        """
+        folium.Marker(
+            location=[lat, lon],
+            popup=popup,
+            tooltip=name,
+            icon=folium.Icon(color="green", icon="coffee", prefix='fa')
+        ).add_to(cafe_map)
+
+    # Centered with rounded container
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        st.markdown(
+            "<div style='border-radius: 20px; overflow: hidden;'>",
+            unsafe_allow_html=True
         )
-
-# --- If results exist, apply rating filter and display ---
-if st.session_state.results:
-    results = st.session_state.results
-
-    # ⭐ Filter by rating
-    results = [cafe for cafe in results if cafe.get("rating", 0) >= min_rating]
-
-    if not results:
-        st.warning(f"No cafés match your filters in {location}. Try adjusting rating or filters.")
-    else:
-        st.success(f"Found {len(results)} cafés in {location} matching your filters!")
-
-        # 🟢 Open Now Label
-        if open_now:
-            st.info("🟢 Only showing cafés that are currently open now.")
-
-        # --- MAP AT TOP ---
-        st.subheader("🗺️ Map View")
-
-        first_cafe = results[0]
-        lat = first_cafe["coordinates"]["latitude"]
-        lon = first_cafe["coordinates"]["longitude"]
-        cafe_map = folium.Map(location=[lat, lon], zoom_start=13)
-
-        for cafe in results:
-            name = cafe["name"]
-            rating = cafe["rating"]
-            address = ", ".join(cafe["location"]["display_address"])
-            phone = cafe.get("display_phone", "N/A")
-            lat = cafe["coordinates"]["latitude"]
-            lon = cafe["coordinates"]["longitude"]
-
-            popup = f"""
-            <b>{name}</b><br>
-            ⭐ Rating: {rating}<br>
-            📍 {address}<br>
-            📞 {phone}
-            """
-
-            folium.Marker(
-                location=[lat, lon],
-                popup=popup,
-                tooltip=name,
-                icon=folium.Icon(color="green", icon="coffee", prefix='fa')
-            ).add_to(cafe_map)
-
         st_folium(cafe_map, width=700, height=500)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # --- Café Cards BELOW ---
-        for cafe in results:
-            st.markdown("----")
-            col1, col2 = st.columns([1, 2])
-
-            with col1:
-                image_url = cafe.get("image_url")
-                if image_url:
-                    st.image(image_url, width=250)
-                else:
-                    st.write("🖼️ No image available")
-
-            with col2:
-                st.markdown(f"### ☕ {cafe['name']}")
-                st.write(f"📍 **Address:** {', '.join(cafe['location']['display_address'])}")
-                st.write(f"⭐ **Rating:** {cafe['rating']} | 📞 **Phone:** {cafe.get('phone', 'N/A')}")
-                st.markdown(f"[🔗 View on Yelp]({cafe['url']})")
+# Cafe Cards
+if results:
+    st.subheader("📍 Cafe Results")
+    for cafe in results:
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.image(cafe["image_url"], width=100)
+        with col2:
+            st.markdown(f"### {cafe['name']}")
+            st.markdown(f"⭐ **Rating**: {cafe['rating']} &nbsp;&nbsp;&nbsp; 📞 **Phone**: {cafe.get('display_phone', 'N/A')}")
+            st.markdown(f"📍 {' ,'.join(cafe['location']['display_address'])}")
+            st.markdown(f"🌐 [Yelp Page]({cafe['url']})")
